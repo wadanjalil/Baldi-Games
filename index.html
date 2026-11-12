@@ -52,32 +52,40 @@
       const topic = document.getElementById('topic').value;
       const grid = document.getElementById('grid');
       grid.textContent = 'Fetching top games from GitHub...';
-      const res = await fetch(`https://github.com{topic}+fork:false&sort=stars&per_page=60`);
-      const data = await res.json();
-      games = (data.items || []).filter(r => r.homepage && r.homepage.startsWith('http'));
-      render();
+      try {
+        const res = await fetch(`https://github.com{topic}+fork:false&sort=stars&per_page=60`);
+        if (!res.ok) throw new Error('API limit reached or network error');
+        const data = await res.json();
+        games = (data.items || []).filter(r => r.homepage && r.homepage.startsWith('http'));
+        render();
+      } catch (err) {
+        grid.textContent = 'Could not load games right now. Please wait a minute and click Refresh.';
+      }
     }
     function render() {
       const q = document.getElementById('search').value.toLowerCase();
       const grid = document.getElementById('grid');
       const filtered = games.filter(g => g.name.toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q));
-      grid.innerHTML = filtered.map(g => `
+      grid.innerHTML = filtered.map((g, i) => `
         <div class="card">
           <div>
             <h3>${g.name}</h3>
             <p>${g.description || 'No description provided.'}</p>
           </div>
           <div class="actions">
-            <button onclick="play('${g.name}', '${g.homepage}')">Play</button>
+            <button onclick="playByIndex(${i})">Play</button>
             <a href="${g.html_url}" target="_blank">GitHub ★ ${g.stargazers_count}</a>
           </div>
         </div>
       `).join('') || 'No playable games found.';
+      window.currentFiltered = filtered;
     }
-    function play(name, url) {
-      document.getElementById('nowPlaying').textContent = 'Playing: ' + name;
-      document.getElementById('newTabLink').href = url;
-      document.getElementById('gameFrame').src = url;
+    function playByIndex(index) {
+      const game = window.currentFiltered[index];
+      if (!game) return;
+      document.getElementById('nowPlaying').textContent = 'Playing: ' + game.name;
+      document.getElementById('newTabLink').href = game.homepage;
+      document.getElementById('gameFrame').src = game.homepage;
       document.getElementById('player').style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -90,3 +98,4 @@
   </script>
 </body>
 </html>
+
