@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Browser Arcade</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; }
+    header { max-width: 1100px; margin: 0 auto 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    h1 { margin: 0 auto 0 0; color: #58a6ff; font-size: 1.5rem; }
+    input, select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #30363d; background: #161b22; color: #fff; }
+    button { background: #238636; border: none; cursor: pointer; font-weight: bold; }
+    button:hover { background: #2ea043; }
+    #player { max-width: 1100px; margin: 0 auto 24px; display: none; background: #161b22; padding: 12px; border-radius: 8px; border: 1px solid #30363d; }
+    iframe { width: 100%; height: 550px; border: none; border-radius: 6px; background: #000; }
+    .grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+    .card h3 { margin: 0 0 8px; font-size: 1.1rem; color: #fff; }
+    .card p { font-size: 0.9rem; color: #8b949e; flex-grow: 1; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .actions a { color: #58a6ff; text-decoration: none; font-size: 0.85rem; align-self: center; margin-left: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GitHub Arcade</h1>
+    <select id="topic">
+      <option value="browser-game">Browser Games</option>
+      <option value="html5-game">HTML5 Games</option>
+      <option value="javascript-game">JavaScript Games</option>
+    </select>
+    <input id="search" type="text" placeholder="Filter loaded games..." oninput="render()" />
+    <button onclick="loadGames()">Refresh</button>
+  </header>
+
+  <div id="player">
+    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+      <strong id="nowPlaying">Playing</strong>
+      <div>
+        <a id="newTabLink" href="#" target="_blank" style="color:#58a6ff; margin-right:12px;">Open in New Tab ↗</a>
+        <button onclick="closePlayer()" style="background:#da3633;">Close</button>
+      </div>
+    </div>
+    <iframe id="gameFrame" src=""></iframe>
+  </div>
+
+  <div id="grid" class="grid">Loading games from GitHub...</div>
+
+  <script>
+    let games = [];
+    async function loadGames() {
+      const topic = document.getElementById('topic').value;
+      const grid = document.getElementById('grid');
+      grid.textContent = 'Fetching top games from GitHub...';
+      const res = await fetch(`https://github.com{topic}+fork:false&sort=stars&per_page=60`);
+      const data = await res.json();
+      games = (data.items || []).filter(r => r.homepage && r.homepage.startsWith('http'));
+      render();
+    }
+    function render() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const grid = document.getElementById('grid');
+      const filtered = games.filter(g => g.name.toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q));
+      grid.innerHTML = filtered.map(g => `
+        <div class="card">
+          <div>
+            <h3>${g.name}</h3>
+            <p>${g.description || 'No description provided.'}</p>
+          </div>
+          <div class="actions">
+            <button onclick="play('${g.name}', '${g.homepage}')">Play</button>
+            <a href="${g.html_url}" target="_blank">GitHub ★ ${g.stargazers_count}</a>
+          </div>
+        </div>
+      `).join('') || 'No playable games found.';
+    }
+    function play(name, url) {
+      document.getElementById('nowPlaying').textContent = 'Playing: ' + name;
+      document.getElementById('newTabLink').href = url;
+      document.getElementById('gameFrame').src = url;
+      document.getElementById('player').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function closePlayer() {
+      document.getElementById('gameFrame').src = '';
+      document.getElementById('player').style.display = 'none';
+    }
+    document.getElementById('topic').addEventListener('change', loadGames);
+    loadGames();
+  </script>
+</body>
+</html>
